@@ -8,6 +8,8 @@
 
 **نسخه آنلاین:** https://mehdibinam.github.io/hesabdari-sade/
 
+<img width="1919" height="861" alt="hesabdari sade" src="https://github.com/user-attachments/assets/4b2a030e-2bcf-42f3-9122-034c458634f6" />
+
 ---
 
 ## فهرست مطالب
