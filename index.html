@@ -1,0 +1,2055 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        // apply saved language/theme before first paint
+        (function () {
+            try {
+                var lang = localStorage.getItem('inventory_lang') === 'en' ? 'en' : 'fa';
+                var root = document.documentElement;
+                root.lang = lang;
+                root.dir = lang === 'en' ? 'ltr' : 'rtl';
+                if (localStorage.getItem('inventory_theme') === 'dark') root.classList.add('dark');
+            } catch (e) {}
+        })();
+    </script>
+    <title>سیستم انبارگردانی آسان و هوشمند - نسخه ۱.۱.۰</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Vazir', 'Tahoma', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <!-- Vazir Font from CDN -->
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/font-face.css" rel="stylesheet" type="text/css" />
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <!-- SheetJS (XLSX) CDN - For importing and exporting Excel files (.xlsx, .xls, .csv) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
+    <style>
+        body, input, select, button, textarea, option {
+            font-family: 'Vazir', 'Tahoma', sans-serif !important;
+            background-color: #f8fafc;
+        }
+        /* Scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        
+        /* Tooltip styling - Changed to top: 125% to display BELOW the element, preventing clipping by sticky headers */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 180px;
+            background-color: #1e293b;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 6px;
+            position: absolute;
+            z-index: 50;
+            top: 125%; /* Positioned BELOW to avoid sticky header clipping */
+            left: 50%;
+            margin-left: -90px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            font-size: 0.7rem;
+            line-height: 1.4;
+            pointer-events: none;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Prevent column wrapping on short/specific columns, but allow general wrapping */
+        th.no-wrap, td.no-wrap {
+            white-space: nowrap !important;
+        }
+        
+        /* Barcode column maximum width limit */
+        .barcode-col {
+            max-width: 140px !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+        }
+
+        /* Border transition for resizing handle */
+        .resizer {
+            transition: background-color 150ms ease-in-out;
+        }
+    
+        /* Dark mode */
+        html.dark { color-scheme: dark; }
+        :where(.dark) body, :where(.dark) input, :where(.dark) select, :where(.dark) textarea, :where(.dark) option { background-color: #0b1220; color: #e2e8f0; }
+        :where(.dark) button { background-color: transparent; }
+        .dark header { background-image: linear-gradient(to right, #1e293b, #312e81); }
+        .dark .bg-white { background-color: #1e293b; }
+        .dark .bg-slate-50 { background-color: #0f172a; }
+        .dark .bg-slate-100 { background-color: #334155; }
+        .dark .bg-slate-50\/90 { background-color: rgba(15, 23, 42, 0.92); }
+        .dark .even\:bg-slate-50\/20:nth-child(even) { background-color: rgba(15, 23, 42, 0.35); }
+        .dark .hover\:bg-slate-50\/80:hover { background-color: rgba(51, 65, 85, 0.5); }
+        .dark .hover\:bg-slate-50:hover, .dark .hover\:bg-slate-100:hover { background-color: #334155; }
+        .dark .hover\:bg-slate-200:hover { background-color: #475569; }
+        .dark .hover\:bg-indigo-50\/50:hover { background-color: rgba(99, 102, 241, 0.15); }
+        .dark .focus\:bg-white:focus { background-color: #1e293b; }
+        .dark .bg-indigo-50, .dark .hover\:bg-indigo-50:hover { background-color: rgba(99, 102, 241, 0.18); }
+        .dark .hover\:bg-indigo-100:hover { background-color: rgba(99, 102, 241, 0.3); }
+        .dark .bg-amber-50 { background-color: rgba(245, 158, 11, 0.16); }
+        .dark .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.16); }
+        .dark .hover\:bg-emerald-100:hover { background-color: rgba(16, 185, 129, 0.28); }
+        .dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.18); }
+        .dark .bg-teal-50, .dark .hover\:bg-teal-50:hover { background-color: rgba(20, 184, 166, 0.16); }
+        .dark .hover\:bg-teal-100:hover { background-color: rgba(20, 184, 166, 0.28); }
+        .dark .hover\:bg-rose-50:hover { background-color: rgba(244, 63, 94, 0.16); }
+        .dark .bg-emerald-50\/90 { background-color: rgba(16, 185, 129, 0.14); }
+        .dark .bg-blue-50\/90 { background-color: rgba(59, 130, 246, 0.14); }
+        .dark .bg-amber-100 { background-color: rgba(245, 158, 11, 0.2); }
+        .dark .bg-rose-100 { background-color: rgba(244, 63, 94, 0.2); }
+        .dark .text-slate-800 { color: #e2e8f0; }
+        .dark .text-slate-700 { color: #cbd5e1; }
+        .dark .text-slate-600, .dark .hover\:text-slate-600:hover { color: #b6c2d4; }
+        .dark .text-slate-500 { color: #94a3b8; }
+        .dark .text-indigo-900 { color: #c7d2fe; }
+        .dark .text-indigo-700, .dark .text-indigo-600 { color: #a5b4fc; }
+        .dark .hover\:text-indigo-800:hover, .dark .hover\:text-indigo-700:hover { color: #c7d2fe; }
+        .dark .text-emerald-600, .dark .text-emerald-700, .dark .text-emerald-800 { color: #6ee7b7; }
+        .dark .text-blue-600, .dark .text-blue-700, .dark .text-blue-800 { color: #93c5fd; }
+        .dark .text-amber-600, .dark .text-amber-700, .dark .text-amber-800 { color: #fcd34d; }
+        .dark .text-rose-600, .dark .text-rose-700 { color: #fda4af; }
+        .dark .hover\:text-rose-800:hover { color: #fecdd3; }
+        .dark .text-teal-600, .dark .text-teal-700 { color: #5eead4; }
+        .dark .hover\:text-teal-800:hover { color: #99f6e4; }
+        .dark .border-slate-100, .dark .border-slate-200 { border-color: #334155; }
+        .dark .border-indigo-100, .dark .border-emerald-100, .dark .border-teal-100 { border-color: rgba(255, 255, 255, 0.08); }
+        .dark .border-rose-200 { border-color: rgba(244, 63, 94, 0.4); }
+        .dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: #334155; }
+        .dark ::-webkit-scrollbar-track { background: #1e293b; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+        .dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        .dark .tooltip .tooltiptext { background-color: #475569; }
+        .dark .swal2-popup { background: #1e293b; color: #e2e8f0; }
+        .dark .swal2-title, .dark .swal2-html-container { color: #e2e8f0; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col w-full">
+
+    <!-- Header (Search Focus button and Layout Toggle removed) -->
+    <header class="bg-gradient-to-r from-blue-700 to-indigo-800 text-white shadow-md py-4 px-6 md:px-8 w-full shrink-0">
+        <div class="w-full flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-white text-indigo-700 p-2.5 rounded-xl shadow-inner">
+                    <i class="fa-solid fa-boxes-stacked text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-wide">سیستم انبارگردانی آسان و هوشمند</h1>
+                    <p class="text-xs text-indigo-200 mt-0.5">ثبت موجودی، ارزیابی ارزش انبار و تغییر قیمت گروهی کالاها</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <div class="bg-indigo-900/40 text-xs px-3.5 py-2 rounded-xl border border-indigo-500/30 flex items-center gap-2">
+                    <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>ذخیره‌سازی خودکار مرورگر فعال است</span>
+                </div>
+                <button id="lang-toggle" onclick="toggleLanguage()" class="bg-white/15 hover:bg-white/25 text-white text-xs font-bold px-3 h-9 rounded-xl border border-white/20 flex items-center gap-1.5 transition-all">
+                    <i class="fa-solid fa-language text-sm"></i>
+                    <span id="lang-toggle-label">EN</span>
+                </button>
+                <button id="theme-toggle" onclick="toggleTheme()" class="bg-white/15 hover:bg-white/25 text-white w-9 h-9 rounded-xl border border-white/20 flex items-center justify-center transition-all">
+                    <i id="theme-toggle-icon" class="fa-solid fa-moon"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container (Full Width Stacked Layout) -->
+    <main class="flex-grow w-full px-6 md:px-8 py-6">
+        <div id="main-layout" class="flex flex-col gap-6 w-full">
+            
+            <!-- Stats Dashboard Section (Full Width Grid) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full" id="stats-container-grid">
+                <!-- Stat 1: Total Unique Products -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 flex items-center justify-between hover:shadow-md transition-all">
+                    <div class="space-y-1">
+                        <span class="text-xs text-slate-500 font-medium block">تنوع کالاها</span>
+                        <div class="text-2xl font-bold text-indigo-600" id="stat-unique-products">۰</div>
+                    </div>
+                    <div class="bg-indigo-50 text-indigo-600 p-3.5 rounded-xl">
+                        <i class="fa-solid fa-tags text-xl"></i>
+                    </div>
+                </div>
+
+                <!-- Stat 2: Total Items Quantity -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 flex items-center justify-between hover:shadow-md transition-all">
+                    <div class="space-y-1">
+                        <span class="text-xs text-slate-500 font-medium block">کل موجودی فیزیکی</span>
+                        <div class="text-2xl font-bold text-amber-600" id="stat-total-quantity">۰</div>
+                    </div>
+                    <div class="bg-amber-50 text-amber-600 p-3.5 rounded-xl">
+                        <i class="fa-solid fa-box-open text-xl"></i>
+                    </div>
+                </div>
+
+                <!-- Stat 3: Total Purchase Value -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 flex items-center justify-between hover:shadow-md transition-all">
+                    <div class="space-y-1">
+                        <span class="text-xs text-slate-500 font-medium block flex items-center gap-1">
+                            ارزش خرید کل انبار
+                            <span class="tooltip inline-block cursor-help text-slate-400 hover:text-indigo-600">
+                                <i class="fa-solid fa-circle-info text-[10px]"></i>
+                                <span class="tooltiptext">ارزش خرید کل موجودی انبار</span>
+                            </span>
+                        </span>
+                        <div class="text-xl font-bold text-emerald-600" id="stat-purchase-value">۰ <span class="text-xs font-normal text-slate-500">تومان</span></div>
+                    </div>
+                    <div class="bg-emerald-50 text-emerald-600 p-3.5 rounded-xl">
+                        <i class="fa-solid fa-hand-holding-dollar text-xl"></i>
+                    </div>
+                </div>
+
+                <!-- Stat 4: Total Selling Value (Hidden by default unless selling values exist) -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 flex items-center justify-between hover:shadow-md transition-all" id="selling-stat-box">
+                    <div class="space-y-1">
+                        <span class="text-xs text-slate-500 font-medium block">ارزش فروش کل انبار</span>
+                        <div class="text-xl font-bold text-blue-600" id="stat-selling-value">۰ <span class="text-xs font-normal text-slate-500">تومان</span></div>
+                    </div>
+                    <div class="bg-blue-50 text-blue-600 p-3.5 rounded-xl">
+                        <i class="fa-solid fa-dollar-sign text-xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Toolbar -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 flex flex-col xl:flex-row justify-between items-stretch xl:items-center gap-4">
+
+                <!-- Primary actions -->
+                <div class="flex flex-wrap items-center gap-2 shrink-0">
+                    <button onclick="openBulkPriceModal()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-sm transition-all">
+                        <i class="fa-solid fa-calculator"></i>
+                        <span>تغییر قیمت دسته‌جمعی</span>
+                    </button>
+
+                    <button onclick="openAddModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-sm transition-all">
+                        <i class="fa-solid fa-plus text-xs"></i>
+                        <span>ثبت کالای جدید</span>
+                    </button>
+                </div>
+
+                <!-- Search and filters -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-grow max-w-4xl">
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute start-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                        <input type="text" id="filter-search" oninput="applyFilters()" placeholder="جستجو در نام یا کد کالا..."
+                            class="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 rounded-xl ps-10 pe-3 py-2 text-sm transition-all outline-none">
+                    </div>
+
+                    <div class="relative">
+                        <i class="fa-solid fa-barcode absolute start-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                        <input type="text" id="filter-barcode" oninput="applyFilters()" placeholder="فیلتر مستقیم بر اساس بارکد..."
+                            class="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 rounded-xl ps-10 pe-3 py-2 text-sm transition-all outline-none">
+                    </div>
+
+                    <div>
+                        <select id="filter-category" onchange="applyFilters()"
+                            class="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 rounded-xl px-3 py-2 text-sm transition-all outline-none">
+                            <option value="">دسته بندی (همه)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Import / export / reset -->
+                <div class="flex flex-wrap items-center gap-2 shrink-0">
+                    <button onclick="triggerImport()" class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-xs px-3.5 py-2.5 rounded-xl flex items-center gap-1.5 transition-all">
+                        <i class="fa-solid fa-file-import text-slate-500"></i>
+                        <span>بارگذاری فایل</span>
+                    </button>
+
+                    <button onclick="openExportModal()" class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-xs px-3.5 py-2.5 rounded-xl flex items-center gap-1.5 transition-all">
+                        <i class="fa-solid fa-file-export text-slate-500"></i>
+                        <span>خروجی گرفتن</span>
+                    </button>
+
+                    <button onclick="resetAllData()" class="bg-white hover:bg-rose-50 border border-rose-200 text-rose-600 font-bold text-xs px-3.5 py-2.5 rounded-xl flex items-center gap-1.5 transition-all">
+                        <i class="fa-solid fa-rotate-left"></i>
+                        <span>ریست کردن</span>
+                    </button>
+                    <input type="file" id="import-file" class="hidden" accept=".xlsx,.xls,.csv,.json" onchange="importData(event)">
+                </div>
+            </div>
+
+        <!-- Inventory Table Container -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden w-full">
+            <div class="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white z-10 shrink-0">
+                <div class="flex items-center gap-3">
+                    <h3 class="font-bold text-slate-700">اقلام موجود در لیست انبارگردانی</h3>
+                    <span id="filtered-count-badge" class="bg-slate-100 text-slate-600 text-[11px] font-bold px-2.5 py-0.5 rounded-full">تعداد کالا: ۰</span>
+                </div>
+                
+                <!-- Page Size Selector -->
+                <div class="flex items-center gap-2 text-xs text-slate-500">
+                    <span>نمایش در هر صفحه:</span>
+                    <select id="page-size-selector" onchange="changePageSize()" class="bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-lg px-2 py-1 text-xs outline-none">
+                        <option value="50" selected>۵۰ کالا</option>
+                        <option value="-1">همه اقلام</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Table Container (Horizontal Scrolling, Sticky Header and Clickable Sort Headers) -->
+            <div class="overflow-x-auto overflow-y-auto max-h-[600px] w-full relative">
+                <table id="inventory-table" class="w-full text-start border-collapse table-auto">
+                    <thead>
+                        <tr class="border-b border-slate-100 text-[13px] font-bold text-slate-600 select-none">
+                            <th class="sticky top-0 bg-slate-50/90 backdrop-blur-xs py-4 px-4 w-14 text-center border-e border-slate-100 z-20 no-wrap">ردیف</th>
+                            
+                            <th onclick="handleHeaderSort('code')" class="sticky top-0 bg-slate-50/90 backdrop-blur-xs py-4 px-4 border-e border-slate-100 z-20 cursor-pointer hover:bg-indigo-50/50 transition-colors no-wrap">
+                                <div class="flex items-center gap-1 justify-start">
+                                    <span>کد کالا</span>
+                                    <span id="sort-icon-code"><i class="fa-solid fa-sort text-slate-300 text-xs"></i></span>
+                                </div>
+                            </th>
+                            
+                            <th onclick="handleHeaderSort('name')" class="sticky top-0 bg-slate-50/90 backdrop-blur-xs py-4 px-4 border-e border-slate-100 z-20 cursor-pointer hover:bg-indigo-50/50 transition-colors no-wrap">
+                                <div class="flex items-center gap-1 justify-start">
+                                    <span>نام محصول</span>
+                                    <span id="sort-icon-name"><i class="fa-solid fa-sort text-slate-300 text-xs"></i></span>
+                                </div>
+                            </th>
+                            
+                            <th onclick="handleHeaderSort('category')" class="sticky top-0 bg-slate-50/90 backdrop-blur-xs py-4 px-4 border-e border-slate-100 z-20 cursor-pointer hover:bg-indigo-50/50 transition-colors no-wrap">
+                                <div class="flex items-center gap-1 justify-start">
+                                    <span>دسته بندی</span>
+                                    <span id="sort-icon-category"><i class="fa-solid fa-sort text-slate-300 text-xs"></i></span>
+                                </div>
+                            </th>
+                            
+                            <th onclick="handleHeaderSort('purchasePrice')" class="sticky top-0 bg-slate-50/90 backdrop-blur-xs py-4 px-4 text-end border-e border-slate-100 z-20 cursor-pointer hover:bg-indigo-50/50 transition-colors no-wrap">
+                                <div class="flex items-center gap-1 justify-end">
+                                    <span class="tooltip">
+                                        قیمت خرید (تومان)
+                                        <span class="tooltiptext">قیمت خرید هر واحد کالا</span>
+                                    </span>
+                                    <span id="sort-icon-purchasePrice"><i class="fa-solid fa-sort text-slate-300 text-xs"></i></span>
+                                </div>
+                            </th>
+                            
+                            <th onclick="handleHeaderSort('sellingPrice')" class="sticky top-0 bg-slate-50/90 backdrop-blur-xs py-4 px-4 text-end border-e border-slate-100 z-20 cursor-pointer hover:bg-indigo-50/50 transition-colors no-wrap">
+                                <div class="flex items-center gap-1 justify-end">
+                                    <span class="tooltip">
+                                        قیمت فروش (تومان)
+                                        <span class="tooltiptext">قیمت فروش هر واحد کالا</span>
+                                    </span>
+                                    <span id="sort-icon-sellingPrice"><i class="fa-solid fa-sort text-slate-300 text-xs"></i></span>
+                                </div>
+                            </th>
+                            
+                            <th onclick="handleHeaderSort('quantity')" class="sticky top-0 bg-slate-50/90 backdrop-blur-xs py-4 px-4 text-center border-e border-slate-100 z-20 cursor-pointer hover:bg-indigo-50/50 transition-colors no-wrap">
+                                <div class="flex items-center gap-1 justify-center">
+                                    <span>تعداد کالا</span>
+                                    <span id="sort-icon-quantity"><i class="fa-solid fa-sort text-slate-300 text-xs"></i></span>
+                                </div>
+                            </th>
+                            
+                            <th class="sticky top-0 bg-emerald-50/90 backdrop-blur-xs py-4 px-4 text-end border-e border-slate-100 z-20 no-wrap">
+                                <span class="tooltip font-bold text-emerald-800">
+                                    ارزش کل خرید (تومان)
+                                    <span class="tooltiptext">تعداد × قیمت خرید این محصول</span>
+                                </span>
+                            </th>
+                            
+                            <th class="sticky top-0 bg-blue-50/90 backdrop-blur-xs py-4 px-4 text-end border-e border-slate-100 z-20 no-wrap">
+                                <span class="tooltip font-bold text-blue-800">
+                                    ارزش کل فروش (تومان)
+                                    <span class="tooltiptext">تعداد × قیمت فروش این محصول</span>
+                                </span>
+                            </th>
+                            
+                            <th onclick="handleHeaderSort('barcode')" class="sticky top-0 bg-slate-50/90 backdrop-blur-xs py-4 px-4 border-e border-slate-100 z-20 cursor-pointer hover:bg-indigo-50/50 transition-colors no-wrap barcode-col">
+                                <div class="flex items-center gap-1 justify-start">
+                                    <span>بارکد محصول</span>
+                                    <span id="sort-icon-barcode"><i class="fa-solid fa-sort text-slate-300 text-xs"></i></span>
+                                </div>
+                            </th>
+                            
+                            <th data-no-resize class="sticky top-0 bg-slate-50/90 backdrop-blur-xs py-4 px-4 text-center z-20 no-wrap">عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventory-tbody" class="divide-y divide-slate-100 text-sm">
+                        <!-- Empty State Row -->
+                        <tr id="empty-state-row">
+                            <td colspan="11" class="py-16 text-center">
+                                <div class="flex flex-col items-center justify-center space-y-3">
+                                    <div class="bg-slate-50 text-slate-300 p-4 rounded-full">
+                                        <i class="fa-solid fa-clipboard-question text-4xl"></i>
+                                    </div>
+                                    <div class="font-bold text-slate-500 text-base">لیست انبارگردانی شما خالی است</div>
+                                    <p class="text-xs text-slate-400 max-w-sm">کالایی در سیستم وجود ندارد. می‌توانید به صورت دستی کالای جدیدی اضافه کنید یا اطلاعات را از فایل اکسل یا فایل پشتیبان بارگذاری نمایید.</p>
+                                    <div class="flex items-center gap-2 pt-2">
+                                        <button onclick="openAddModal()" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-lg transition-all">
+                                            ثبت اولین کالا
+                                        </button>
+                                        <button onclick="triggerImport()" class="text-xs font-bold text-slate-600 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-lg transition-all">
+                                            بارگذاری اکسل نمونه
+                                        </button>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination Controls Footer -->
+            <div id="pagination-controls" class="border-t border-slate-100 bg-slate-50 px-6 py-3 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs font-bold text-slate-600 shrink-0">
+                <div id="pagination-stats" class="text-slate-500">
+                    نمایش کالاها از ۰ تا ۰ از کل ۰ کالا
+                </div>
+                <div class="flex items-center gap-1" id="pagination-buttons-container">
+                    <!-- Page buttons populated dynamically -->
+                </div>
+            </div>
+
+        </div>
+    </div> <!-- End Right Panel -->
+
+    </div> <!-- End Main Layout (Two-Column / Single-Column Wrapper) -->
+</main>
+
+    <!-- Modal Form (Add & Edit Product) -->
+    <div id="product-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden transition-all duration-300">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-2xl transform scale-95 transition-all duration-300 overflow-hidden" id="modal-container">
+            
+            <!-- Modal Header -->
+            <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div id="modal-icon" class="bg-indigo-50 text-indigo-600 p-2 rounded-lg">
+                        <i class="fa-solid fa-plus-circle text-lg"></i>
+                    </div>
+                    <h2 id="modal-title" class="font-bold text-slate-700 text-lg">ثبت مشخصات کالای جدید</h2>
+                </div>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1.5 rounded-lg transition-all">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Modal Form Body -->
+            <form id="product-form" onsubmit="saveProduct(event)" class="p-6 space-y-4">
+                <input type="hidden" id="product-id">
+                
+                <!-- Row 1: Product Name (Full Width) -->
+                <div>
+                    <label for="p-name" class="block text-xs font-bold text-slate-600 mb-1.5">
+                        نام کامل محصول <span class="text-rose-500">*</span>
+                    </label>
+                    <input type="text" id="p-name" required placeholder="مثال: گوشی شیائومی مدل Redmi Note 12" 
+                        class="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 rounded-xl px-3.5 py-2 text-sm transition-all outline-none">
+                </div>
+
+                <!-- Row 2: Prices and Quantity (3 Columns) -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <!-- Purchase Price -->
+                    <div>
+                        <label for="p-purchase-price" class="block text-xs font-bold text-slate-600 mb-1.5 flex justify-between">
+                            <span>قیمت خرید واحد (تومان) <span class="text-rose-500">*</span></span>
+                        </label>
+                        <input type="number" id="p-purchase-price" required min="0" oninput="formatLivePrice(this, 'live-p-purchase')" placeholder="مثال: 4500000" 
+                            class="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 rounded-xl px-3.5 py-2 text-sm transition-all outline-none">
+                        <span id="live-p-purchase" class="text-[11px] text-slate-400 mt-1 block h-4"></span>
+                    </div>
+
+                    <!-- Selling Price -->
+                    <div>
+                        <label for="p-selling-price" class="block text-xs font-bold text-slate-600 mb-1.5 flex justify-between">
+                            <span>قیمت فروش واحد (تومان) <span class="text-rose-500">*</span></span>
+                        </label>
+                        <input type="number" id="p-selling-price" required min="0" oninput="formatLivePrice(this, 'live-p-selling')" placeholder="مثال: 5200000" 
+                            class="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 rounded-xl px-3.5 py-2 text-sm transition-all outline-none">
+                        <span id="live-p-selling" class="text-[11px] text-slate-400 mt-1 block h-4"></span>
+                    </div>
+
+                    <!-- Product Quantity -->
+                    <div>
+                        <label for="p-quantity" class="block text-xs font-bold text-slate-600 mb-1.5 flex justify-between">
+                            <span>تعداد کالا (موجودی) <span class="text-rose-500">*</span></span>
+                        </label>
+                        <input type="number" id="p-quantity" required min="0" placeholder="مثال: 15" 
+                            class="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 rounded-xl px-3.5 py-2 text-sm transition-all outline-none">
+                        <span id="live-p-quantity" class="text-[11px] text-slate-400 mt-1 block h-4"></span>
+                    </div>
+                </div>
+
+                <!-- Row 3: Product Code, Category, and Barcode (3 Columns) -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <!-- Product Code -->
+                    <div>
+                        <label for="p-code" class="block text-xs font-bold text-slate-600 mb-1.5 flex justify-between">
+                            <span>کد کالا</span>
+                            <span class="text-[10px] text-slate-400 font-normal">شناسه کالا</span>
+                        </label>
+                        <input type="text" id="p-code" placeholder="مثال: ap-1" 
+                            class="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 rounded-xl px-3.5 py-2 text-sm transition-all outline-none">
+                    </div>
+                    
+                    <!-- Product Category -->
+                    <div>
+                        <label for="p-category" class="block text-xs font-bold text-slate-600 mb-1.5 flex justify-between">
+                            <span>دسته بندی</span>
+                            <span class="text-[10px] text-slate-400 font-normal">گروه‌بندی</span>
+                        </label>
+                        <div class="relative">
+                            <input type="text" id="p-category" placeholder="مثال: بهداشتی، مواد غذایی" list="existing-categories"
+                                class="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 rounded-xl px-3.5 py-2 text-sm transition-all outline-none">
+                            <datalist id="existing-categories">
+                                <!-- Populated dynamically -->
+                            </datalist>
+                        </div>
+                    </div>
+
+                    <!-- Product Barcode -->
+                    <div>
+                        <label for="p-barcode" class="block text-xs font-bold text-slate-600 mb-1.5 flex justify-between">
+                            <span>بارکد محصول</span>
+                            <span class="text-[10px] text-slate-400 font-normal">بارکدخوان</span>
+                        </label>
+                        <div class="relative">
+                            <input type="text" id="p-barcode" placeholder="مثال: 626011..." 
+                                class="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 rounded-xl px-3.5 py-2 text-sm transition-all outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Auto Calculations inside Modal -->
+                <div class="bg-slate-50 rounded-xl border border-slate-100 p-3.5 mt-2 space-y-1.5 text-xs text-slate-500">
+                    <div class="font-bold text-slate-600 mb-1">محاسبات خودکار این کالا:</div>
+                    <div class="flex justify-between">
+                        <span>ارزش کل خرید این کالا:</span>
+                        <span id="calc-product-purchase-total" class="font-bold text-emerald-700">۰ تومان</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>ارزش کل فروش این کالا:</span>
+                        <span id="calc-product-selling-total" class="font-bold text-blue-700">۰ تومان</span>
+                    </div>
+                </div>
+
+                <!-- Form Footer Buttons -->
+                <div class="border-t border-slate-100 pt-4 mt-6 flex justify-end gap-2">
+                    <button type="button" onclick="closeModal()" class="bg-rose-600 hover:bg-rose-700 border border-rose-600 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all">
+                        انصراف
+                    </button>
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-sm transition-all">
+                        تایید و ثبت نهایی
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Bulk Price Adjustment Modal (NEW FEATURE) -->
+    <div id="bulk-price-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden transition-all duration-300">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-lg transform scale-95 transition-all duration-300 overflow-hidden" id="bulk-modal-container">
+            
+            <!-- Modal Header -->
+            <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="bg-amber-50 text-amber-600 p-2 rounded-lg">
+                        <i class="fa-solid fa-calculator text-lg"></i>
+                    </div>
+                    <h2 class="font-bold text-slate-700 text-lg">عملیات تغییر قیمت دسته‌جمعی</h2>
+                </div>
+                <button onclick="closeBulkPriceModal()" class="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1.5 rounded-lg transition-all">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Modal Form Body -->
+            <div class="p-6 space-y-4">
+                
+                <!-- Step 1: Target Scope -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1.5">محدوده اعمال عملیات:</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="border border-slate-200 rounded-xl p-3 flex items-center gap-2.5 cursor-pointer hover:bg-slate-50 transition-all">
+                            <input type="radio" name="bulk-scope" value="all" checked class="text-indigo-600 focus:ring-indigo-500 h-4 w-4">
+                            <div>
+                                <span class="block text-xs font-bold text-slate-700">همه کالاها</span>
+                                <span class="text-[10px] text-slate-400 font-normal">اعمال روی تمام موجودی انبار</span>
+                            </div>
+                        </label>
+                        <label class="border border-slate-200 rounded-xl p-3 flex items-center gap-2.5 cursor-pointer hover:bg-slate-50 transition-all">
+                            <input type="radio" name="bulk-scope" value="filtered" class="text-indigo-600 focus:ring-indigo-500 h-4 w-4">
+                            <div>
+                                <span class="block text-xs font-bold text-slate-700">کالاهای فیلتر شده</span>
+                                <span class="text-[10px] text-slate-400 font-normal">فقط روی موارد لیست فیلتر شده فعلی</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Step 2: Target Price Fields -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1.5">قیمت‌های هدف جهت اعمال تغییرات:</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <label class="border border-slate-200 rounded-xl p-2.5 flex items-center gap-2 cursor-pointer hover:bg-slate-50 transition-all text-center">
+                            <input type="radio" name="bulk-target-price" value="purchase" checked class="text-indigo-600 focus:ring-indigo-500 h-4 w-4">
+                            <span class="text-xs font-bold text-slate-700">قیمت خرید</span>
+                        </label>
+                        <label class="border border-slate-200 rounded-xl p-2.5 flex items-center gap-2 cursor-pointer hover:bg-slate-50 transition-all text-center">
+                            <input type="radio" name="bulk-target-price" value="selling" class="text-indigo-600 focus:ring-indigo-500 h-4 w-4">
+                            <span class="text-xs font-bold text-slate-700">قیمت فروش</span>
+                        </label>
+                        <label class="border border-slate-200 rounded-xl p-2.5 flex items-center gap-2 cursor-pointer hover:bg-slate-50 transition-all text-center">
+                            <input type="radio" name="bulk-target-price" value="both" class="text-indigo-600 focus:ring-indigo-500 h-4 w-4">
+                            <span class="text-xs font-bold text-slate-700">هر دو قیمت</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <!-- Step 3: Increase or Decrease -->
+                    <div>
+                        <label for="bulk-action" class="block text-xs font-bold text-slate-600 mb-1.5">نوع عملیات:</label>
+                        <select id="bulk-action" class="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 rounded-xl px-3 py-2 text-xs transition-all outline-none">
+                            <option value="increase">افزایش قیمت (+)</option>
+                            <option value="decrease">کاهش قیمت (-)</option>
+                        </select>
+                    </div>
+
+                    <!-- Step 4: Adjust Type (Percent or Fixed) -->
+                    <div>
+                        <label for="bulk-type" class="block text-xs font-bold text-slate-600 mb-1.5">روش اعمال تغییرات:</label>
+                        <select id="bulk-type" onchange="toggleBulkTypePlaceholder()" class="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 rounded-xl px-3 py-2 text-xs transition-all outline-none">
+                            <option value="percentage">درصدی (%)</option>
+                            <option value="fixed">مبلغ ثابت (تومان)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Step 5: Input Value -->
+                <div>
+                    <label for="bulk-value" class="block text-xs font-bold text-slate-600 mb-1.5 flex justify-between">
+                        <span>مقدار تغییر قیمت: <span class="text-rose-500">*</span></span>
+                        <span id="bulk-live-indicator" class="text-[10px] text-slate-400 font-normal">درصد افزایش را وارد کنید</span>
+                    </label>
+                    <input type="number" id="bulk-value" required min="0" placeholder="مثال: 15" oninput="formatLiveBulkIndicator()"
+                        class="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 rounded-xl px-3.5 py-2 text-sm transition-all outline-none">
+                </div>
+
+                <!-- Warnings and Explanations -->
+                <div class="bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-xs text-amber-800 space-y-1 hidden">
+                    <div class="font-bold flex items-center gap-1.5">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <span>هشدار مهم انبارگردانی:</span>
+                    </div>
+                    <p class="leading-relaxed">تغییرات قیمت گروهی مستقیماً روی مبالغ کالاها اعمال و ذخیره می‌شود و غیرقابل بازگشت است. توصیه می‌شود پیش از اعمال عملیات، حتماً از طریق دکمه خروجی گرفتن، یک نسخه پشتیبان از انبار خود تهیه کنید.</p>
+                </div>
+
+                <!-- Form Footer Buttons -->
+                <div class="border-t border-slate-100 pt-4 mt-6 flex justify-end gap-2">
+                    <button type="button" onclick="closeBulkPriceModal()" class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 font-bold text-xs px-4 py-2.5 rounded-xl transition-all">
+                        انصراف
+                    </button>
+                    <button onclick="executeBulkPriceAdjustment()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-sm transition-all">
+                        اعمال تغییرات دسته جمعی
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Options Modal -->
+    <div id="export-options-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden">
+            <div class="bg-slate-50 px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
+                <span class="font-bold text-slate-700 text-sm">انتخاب فرمت فایل خروجی</span>
+                <button onclick="closeExportModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="p-5 space-y-3">
+                <!-- XLSX (Excel) Export -->
+                <button onclick="exportToExcel()" class="w-full text-start bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-100 p-3.5 rounded-xl flex items-center gap-3 transition-all">
+                    <div class="bg-emerald-600 text-white p-2.5 rounded-lg text-sm"><i class="fa-solid fa-file-excel"></i></div>
+                    <div>
+                        <div class="font-bold text-xs">خروجی فایل اکسل رسمی (XLSX)</div>
+                        <div class="text-[10px] text-slate-500 mt-0.5">فرمت پیش‌فرض اکسل و مناسب‌ترین فرمت جهت مشاهده و محاسبات بعدی.</div>
+                    </div>
+                </button>
+
+                <!-- CSV Export -->
+                <button onclick="exportToCSV()" class="w-full text-start bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-100 p-3.5 rounded-xl flex items-center gap-3 transition-all">
+                    <div class="bg-teal-600 text-white p-2.5 rounded-lg text-sm"><i class="fa-solid fa-file-csv"></i></div>
+                    <div>
+                        <div class="font-bold text-xs">خروجی فایل جدول (CSV)</div>
+                        <div class="text-[10px] text-slate-500 mt-0.5">فرمت متنی ساده، سبک و سازگار با انواع سیستم‌های حسابداری دیگر.</div>
+                    </div>
+                </button>
+
+                <!-- JSON Backup Export -->
+                <button onclick="exportToJSON()" class="w-full text-start bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-100 p-3.5 rounded-xl flex items-center gap-3 transition-all">
+                    <div class="bg-indigo-600 text-white p-2.5 rounded-lg text-sm"><i class="fa-solid fa-file-code"></i></div>
+                    <div>
+                        <div class="font-bold text-xs">پشتیبان‌گیری کامل و ساختاریافته (JSON)</div>
+                        <div class="text-[10px] text-slate-500 mt-0.5">انتقال بدون نقص اطلاعات به سایر دستگاه‌ها برای بازگردانی دقیق کالاها.</div>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- App Logic Script -->
+    <script>
+        // Core App State (Persisted in LocalStorage)
+        let inventory = [];
+        
+        // Sorting State (Defaults to code, ascending as requested)
+        let currentSortField = 'code';
+        let currentSortDir = 'asc';
+
+        // Pagination State
+        let currentPage = 1;
+        let pageSize = 50; // Default page size
+
+        // Language and theme
+        function readPref(key, fallback) {
+            try { return localStorage.getItem(key) || fallback; } catch (e) { return fallback; }
+        }
+        function writePref(key, value) {
+            try { localStorage.setItem(key, value); } catch (e) {}
+        }
+
+        let currentLang = readPref('inventory_lang', 'fa') === 'en' ? 'en' : 'fa';
+        let currentTheme = readPref('inventory_theme', 'light') === 'dark' ? 'dark' : 'light';
+        const L = (fa, en) => (currentLang === 'en' ? en : fa);
+        const DEFAULT_CATEGORY = 'متفرقه';
+
+        function displayCategory(cat) {
+            return (!cat || cat === DEFAULT_CATEGORY) ? L('متفرقه', 'Misc') : cat;
+        }
+
+        const EN_DICT = {
+            'سیستم انبارگردانی آسان و هوشمند': 'Easy & Smart Inventory System',
+            'ثبت موجودی، ارزیابی ارزش انبار و تغییر قیمت گروهی کالاها': 'Record stock, evaluate inventory value and bulk-edit prices',
+            'ذخیره‌سازی خودکار مرورگر فعال است': 'Browser auto-save is on',
+            'تنوع کالاها': 'Product Variety',
+            'کل موجودی فیزیکی': 'Total Physical Stock',
+            'ارزش خرید کل انبار': 'Total Purchase Value',
+            'ارزش خرید کل موجودی انبار': 'Total purchase value of all stock',
+            'ارزش فروش کل انبار': 'Total Selling Value',
+            'جستجو در نام یا کد کالا...': 'Search by product name or code...',
+            'فیلتر مستقیم بر اساس بارکد...': 'Filter by barcode...',
+            'دسته بندی (همه)': 'Category (All)',
+            'تغییر قیمت دسته‌جمعی': 'Bulk Price Change',
+            'ثبت کالای جدید': 'Add New Product',
+            'بارگذاری فایل': 'Import File',
+            'خروجی گرفتن': 'Export',
+            'ریست کردن': 'Reset',
+            'اقلام موجود در لیست انبارگردانی': 'Items in the inventory list',
+            'نمایش در هر صفحه:': 'Items per page:',
+            '۵۰ کالا': '50 items',
+            'همه اقلام': 'All items',
+            'ردیف': 'No.',
+            'کد کالا': 'Product Code',
+            'نام محصول': 'Product Name',
+            'دسته بندی': 'Category',
+            'قیمت خرید (تومان)': 'Purchase Price (Toman)',
+            'قیمت خرید هر واحد کالا': 'Purchase price per unit',
+            'قیمت فروش (تومان)': 'Selling Price (Toman)',
+            'قیمت فروش هر واحد کالا': 'Selling price per unit',
+            'تعداد کالا': 'Quantity',
+            'ارزش کل خرید (تومان)': 'Total Purchase Value (Toman)',
+            'تعداد × قیمت خرید این محصول': 'Quantity × purchase price of this product',
+            'ارزش کل فروش (تومان)': 'Total Selling Value (Toman)',
+            'تعداد × قیمت فروش این محصول': 'Quantity × selling price of this product',
+            'بارکد محصول': 'Barcode',
+            'عملیات': 'Actions',
+            'لیست انبارگردانی شما خالی است': 'Your inventory list is empty',
+            'کالایی در سیستم وجود ندارد. می‌توانید به صورت دستی کالای جدیدی اضافه کنید یا اطلاعات را از فایل اکسل یا فایل پشتیبان بارگذاری نمایید.': 'There are no products in the system. You can add a product manually or import data from an Excel or backup file.',
+            'ثبت اولین کالا': 'Add your first product',
+            'بارگذاری اکسل نمونه': 'Import sample Excel',
+            'ثبت مشخصات کالای جدید': 'Add New Product',
+            'نام کامل محصول': 'Full product name',
+            'مثال: گوشی شیائومی مدل Redmi Note 12': 'e.g. Xiaomi Redmi Note 12 phone',
+            'قیمت خرید واحد (تومان)': 'Unit purchase price (Toman)',
+            'قیمت فروش واحد (تومان)': 'Unit selling price (Toman)',
+            'تعداد کالا (موجودی)': 'Quantity (stock)',
+            'مثال: 4500000': 'e.g. 4500000',
+            'مثال: 5200000': 'e.g. 5200000',
+            'مثال: 15': 'e.g. 15',
+            'شناسه کالا': 'Product ID',
+            'مثال: ap-1': 'e.g. ap-1',
+            'گروه‌بندی': 'Grouping',
+            'مثال: بهداشتی، مواد غذایی': 'e.g. Hygiene, Groceries',
+            'بارکدخوان': 'Barcode scanner',
+            'مثال: 626011...': 'e.g. 626011...',
+            'محاسبات خودکار این کالا:': 'Automatic calculations:',
+            'ارزش کل خرید این کالا:': 'Total purchase value:',
+            'ارزش کل فروش این کالا:': 'Total selling value:',
+            'انصراف': 'Cancel',
+            'تایید و ثبت نهایی': 'Confirm and save',
+            'عملیات تغییر قیمت دسته‌جمعی': 'Bulk Price Change',
+            'محدوده اعمال عملیات:': 'Apply to:',
+            'همه کالاها': 'All products',
+            'اعمال روی تمام موجودی انبار': 'Apply to the whole inventory',
+            'کالاهای فیلتر شده': 'Filtered products',
+            'فقط روی موارد لیست فیلتر شده فعلی': 'Only the currently filtered list',
+            'قیمت‌های هدف جهت اعمال تغییرات:': 'Prices to change:',
+            'قیمت خرید': 'Purchase price',
+            'قیمت فروش': 'Selling price',
+            'هر دو قیمت': 'Both prices',
+            'نوع عملیات:': 'Operation:',
+            'افزایش قیمت (+)': 'Increase (+)',
+            'کاهش قیمت (-)': 'Decrease (-)',
+            'روش اعمال تغییرات:': 'Method:',
+            'درصدی (%)': 'Percentage (%)',
+            'مبلغ ثابت (تومان)': 'Fixed amount (Toman)',
+            'مقدار تغییر قیمت:': 'Change amount:',
+            'درصد افزایش را وارد کنید': 'Enter the percentage',
+            'هشدار مهم انبارگردانی:': 'Important warning:',
+            'تغییرات قیمت گروهی مستقیماً روی مبالغ کالاها اعمال و ذخیره می‌شود و غیرقابل بازگشت است. توصیه می‌شود پیش از اعمال عملیات، حتماً از طریق دکمه خروجی گرفتن، یک نسخه پشتیبان از انبار خود تهیه کنید.': 'Bulk price changes are applied directly to product prices and cannot be undone. Export a backup of your inventory before applying them.',
+            'اعمال تغییرات دسته جمعی': 'Apply bulk changes',
+            'انتخاب فرمت فایل خروجی': 'Choose export format',
+            'خروجی فایل اکسل رسمی (XLSX)': 'Excel file export (XLSX)',
+            'فرمت پیش‌فرض اکسل و مناسب‌ترین فرمت جهت مشاهده و محاسبات بعدی.': 'The default Excel format, best for viewing and further calculations.',
+            'خروجی فایل جدول (CSV)': 'Table file export (CSV)',
+            'فرمت متنی ساده، سبک و سازگار با انواع سیستم‌های حسابداری دیگر.': 'Simple, lightweight text format compatible with other accounting systems.',
+            'پشتیبان‌گیری کامل و ساختاریافته (JSON)': 'Full structured backup (JSON)',
+            'انتقال بدون نقص اطلاعات به سایر دستگاه‌ها برای بازگردانی دقیق کالاها.': 'Move your data to other devices and restore products exactly.'
+        };
+
+        const normKey = (str) => str.replace(/\u200c/g, '').replace(/\s+/g, ' ').trim();
+        const EN_MAP = {};
+        Object.keys(EN_DICT).forEach(k => { EN_MAP[normKey(k)] = EN_DICT[k]; });
+        const originalText = new WeakMap();
+
+        function translateStatic() {
+            const toEn = currentLang === 'en';
+            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+            const nodes = [];
+            while (walker.nextNode()) nodes.push(walker.currentNode);
+
+            nodes.forEach(node => {
+                const tag = node.parentElement ? node.parentElement.tagName : '';
+                if (tag === 'SCRIPT' || tag === 'STYLE') return;
+                if (toEn) {
+                    const raw = node.nodeValue;
+                    const en = EN_MAP[normKey(raw)];
+                    if (en) {
+                        originalText.set(node, raw);
+                        node.nodeValue = raw.replace(raw.trim(), () => en);
+                    }
+                } else if (originalText.has(node)) {
+                    node.nodeValue = originalText.get(node);
+                    originalText.delete(node);
+                }
+            });
+
+            document.querySelectorAll('[placeholder]').forEach(el => {
+                if (toEn) {
+                    const en = EN_MAP[normKey(el.getAttribute('placeholder'))];
+                    if (en) {
+                        el.dataset.faPlaceholder = el.getAttribute('placeholder');
+                        el.setAttribute('placeholder', en);
+                    }
+                } else if (el.dataset.faPlaceholder !== undefined) {
+                    el.setAttribute('placeholder', el.dataset.faPlaceholder);
+                    delete el.dataset.faPlaceholder;
+                }
+            });
+        }
+
+        function applyTheme() {
+            document.documentElement.classList.toggle('dark', currentTheme === 'dark');
+            const icon = document.getElementById('theme-toggle-icon');
+            if (icon) icon.className = currentTheme === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+            const btn = document.getElementById('theme-toggle');
+            if (btn) btn.title = L('حالت تاریک / روشن', 'Toggle dark mode');
+        }
+
+        function toggleTheme() {
+            currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            writePref('inventory_theme', currentTheme);
+            applyTheme();
+        }
+
+        function applyLanguage() {
+            const root = document.documentElement;
+            root.lang = currentLang;
+            root.dir = currentLang === 'en' ? 'ltr' : 'rtl';
+            document.title = L('سیستم انبارگردانی آسان و هوشمند - نسخه ۱.۱.۰', 'Easy & Smart Inventory System - v1.1.0');
+            translateStatic();
+
+            const label = document.getElementById('lang-toggle-label');
+            if (label) label.textContent = currentLang === 'fa' ? 'EN' : 'فا';
+            const btn = document.getElementById('lang-toggle');
+            if (btn) btn.title = L('تغییر زبان به انگلیسی', 'Switch to Persian');
+            const themeBtn = document.getElementById('theme-toggle');
+            if (themeBtn) themeBtn.title = L('حالت تاریک / روشن', 'Toggle dark mode');
+        }
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'fa' ? 'en' : 'fa';
+            writePref('inventory_lang', currentLang);
+            applyLanguage();
+            refreshUI();
+            calculateModalLiveValues();
+            toggleBulkTypePlaceholder();
+            formatLivePrice(document.getElementById('p-purchase-price'), 'live-p-purchase');
+            formatLivePrice(document.getElementById('p-selling-price'), 'live-p-selling');
+        }
+
+
+        // Load data on startup
+        window.addEventListener('DOMContentLoaded', () => {
+            applyTheme();
+            applyLanguage();
+            loadFromStorage();
+            
+            // Listen to keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'F2') {
+                    e.preventDefault();
+                    openAddModal();
+                }
+            });
+
+            // Set up dynamic live calculations inside the Modal
+            const formInputs = ['p-purchase-price', 'p-selling-price', 'p-quantity'];
+            formInputs.forEach(id => {
+                document.getElementById(id).addEventListener('input', calculateModalLiveValues);
+            });
+        });
+
+        // Load data from localStorage
+        function loadFromStorage() {
+            const stored = localStorage.getItem('inventory_data_toman');
+            if (stored) {
+                try {
+                    inventory = JSON.parse(stored);
+                } catch (e) {
+                    console.error("خطا در بارگذاری داده‌ها:", e);
+                    inventory = [];
+                }
+            } else {
+                inventory = [];
+            }
+            
+            refreshUI();
+        }
+
+        // Save data to localStorage
+        function saveToStorage() {
+            localStorage.setItem('inventory_data_toman', JSON.stringify(inventory));
+        }
+
+        // Number Formatter (with Persian comma separations)
+        function formatNumber(number) {
+            return new Intl.NumberFormat(currentLang === 'en' ? 'en-US' : 'fa-IR').format(number);
+        }
+
+        // Live format warning underneath price inputs
+        function formatLivePrice(input, outputId) {
+            const val = parseFloat(input.value);
+            const outElement = document.getElementById(outputId);
+            if (!isNaN(val) && val >= 0) {
+                outElement.textContent = formatNumber(val) + ' ' + L('تومان', 'Toman');
+            } else {
+                outElement.textContent = '';
+            }
+        }
+
+        // Focus fast search input
+        function focusSearchInput() {
+            const searchInput = document.getElementById('filter-search');
+            searchInput.focus();
+            searchInput.select();
+        }
+
+        // Dynamic statistics dashboard refresh (No Profit/Loss calculations)
+        function updateDashboard() {
+            const uniqueCount = inventory.length;
+            let totalQty = 0;
+            let totalPurchaseVal = 0;
+            let totalSellingVal = 0;
+
+            inventory.forEach(item => {
+                const qty = item.quantity || 0;
+                const buy = item.purchasePrice || 0;
+                const sell = item.sellingPrice || 0;
+
+                totalQty += qty;
+                totalPurchaseVal += (qty * buy);
+                totalSellingVal += (qty * sell);
+            });
+
+            const unit = `<span class="text-xs font-normal text-slate-500">${L('تومان', 'Toman')}</span>`;
+            document.getElementById('stat-unique-products').textContent = formatNumber(uniqueCount);
+            document.getElementById('stat-total-quantity').textContent = formatNumber(totalQty);
+            document.getElementById('stat-purchase-value').innerHTML = `${formatNumber(totalPurchaseVal)} ${unit}`;
+            document.getElementById('stat-selling-value').innerHTML = `${formatNumber(totalSellingVal)} ${unit}`;
+        }
+
+        // Populate Category dropdowns with unique categories from state
+        function populateCategoryFilters() {
+            const filterDropdown = document.getElementById('filter-category');
+            const dataList = document.getElementById('existing-categories');
+
+            const currentSelected = filterDropdown.value;
+            const categories = [...new Set(inventory.map(item => item.category).filter(Boolean))].sort();
+
+            filterDropdown.innerHTML = '';
+            const allOption = document.createElement('option');
+            allOption.value = '';
+            allOption.textContent = L('دسته بندی (همه)', 'Category (All)');
+            filterDropdown.appendChild(allOption);
+            categories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat;
+                option.textContent = displayCategory(cat);
+                filterDropdown.appendChild(option);
+            });
+
+            if (categories.includes(currentSelected)) {
+                filterDropdown.value = currentSelected;
+            }
+
+            dataList.innerHTML = '';
+            categories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat;
+                dataList.appendChild(option);
+            });
+        }
+
+        // Filters + Search + Render loop
+        // Clickable header columns sorting handler
+        function handleHeaderSort(field) {
+            if (currentSortField === field) {
+                currentSortDir = (currentSortDir === 'asc') ? 'desc' : 'asc';
+            } else {
+                currentSortField = field;
+                currentSortDir = 'asc';
+            }
+            currentPage = 1; // Reset to page 1 on sorting change
+            applyFilters();
+        }
+
+        // Update Sort Icons in the HTML Header
+        function updateSortHeaderIcons() {
+            const fields = ['code', 'name', 'category', 'purchasePrice', 'sellingPrice', 'quantity', 'barcode'];
+            fields.forEach(f => {
+                const iconContainer = document.getElementById(`sort-icon-${f}`);
+                if (!iconContainer) return;
+                
+                if (currentSortField === f) {
+                    if (currentSortDir === 'asc') {
+                        iconContainer.innerHTML = '<i class="fa-solid fa-arrow-up-short-wide text-indigo-600 text-sm"></i>';
+                    } else {
+                        iconContainer.innerHTML = '<i class="fa-solid fa-arrow-down-wide-short text-indigo-600 text-sm"></i>';
+                    }
+                } else {
+                    iconContainer.innerHTML = '<i class="fa-solid fa-sort text-slate-300 text-xs"></i>';
+                }
+            });
+        }
+
+        // Alphanumeric natural comparison to sort codes like ap-1, ap-2, ap-10 correctly
+        function naturalSortCompare(a, b) {
+            return a.localeCompare(b, currentLang, { numeric: true, sensitivity: 'base' });
+        }
+
+        // Normalize string for Persian smart matching (standardizes letters, ignores spaces and hyphens)
+        function normalizeString(str) {
+            if (!str) return '';
+            return String(str)
+                .toLowerCase()
+                .replace(/[\s\-_\/,\(\)]/g, '') // remove spaces, dashes, hyphens, slashes, commas, parentheses
+                .replace(/آ/g, 'ا')
+                .replace(/أ/g, 'ا')
+                .replace(/إ/g, 'ا')
+                .replace(/ي/g, 'ی')
+                .replace(/ك/g, 'ک');
+        }
+
+        // Smart search matching helper (ignores word order, space variations, and special characters)
+        function smartSearchMatch(targetName, targetCode, query) {
+            if (!query) return true;
+            
+            const normName = normalizeString(targetName);
+            const normCode = normalizeString(targetCode);
+            
+            // Split search query by space into separate words
+            const queryWords = query.toLowerCase().split(/\s+/).filter(Boolean);
+            
+            // Every word in the search query must exist in either the normalized name or normalized code!
+            return queryWords.every(word => {
+                const normWord = normalizeString(word);
+                return normName.includes(normWord) || normCode.includes(normWord);
+            });
+        }
+
+        // Helper to get currently filtered items (Using Farsi Smart Search)
+        function getFilteredInventory() {
+            const searchQuery = document.getElementById('filter-search').value.trim();
+            const barcodeQuery = document.getElementById('filter-barcode').value.trim();
+            const selectedCat = document.getElementById('filter-category').value;
+
+            return inventory.filter(item => {
+                const matchesSearch = smartSearchMatch(item.name, item.code, searchQuery);
+
+                const matchesBarcode = !barcodeQuery ||
+                    (item.barcode && item.barcode.includes(barcodeQuery));
+
+                const matchesCat = !selectedCat || item.category === selectedCat;
+
+                return matchesSearch && matchesBarcode && matchesCat;
+            });
+        }
+
+        // Filters + Search + Render loop
+        function applyFilters() {
+            let filtered = getFilteredInventory();
+
+            // Apply sorting (supports strings, numbers, and natural sorting for code)
+            filtered.sort((a, b) => {
+                let valA = a[currentSortField];
+                let valB = b[currentSortField];
+
+                if (valA === undefined || valA === null) valA = '';
+                if (valB === undefined || valB === null) valB = '';
+
+                let result = 0;
+                
+                if (currentSortField === 'code') {
+                    result = naturalSortCompare(String(valA), String(valB));
+                } else if (typeof valA === 'number' && typeof valB === 'number') {
+                    result = valA - valB;
+                } else {
+                    result = String(valA).localeCompare(String(valB), currentLang);
+                }
+
+                return (currentSortDir === 'asc') ? result : -result;
+            });
+
+            updateSortHeaderIcons();
+            paginateAndRender(filtered);
+        }
+
+        // Change Pagination size
+        function changePageSize() {
+            pageSize = parseInt(document.getElementById('page-size-selector').value);
+            currentPage = 1; // Reset to page 1
+            applyFilters();
+        }
+
+        // Change current page in pagination
+        function changePage(page) {
+            currentPage = page;
+            applyFilters();
+        }
+
+        // Pagination engine
+        function paginateAndRender(items) {
+            const totalItems = items.length;
+            let paginated = [];
+            let totalPages = 1;
+
+            if (pageSize === -1) {
+                paginated = items;
+                totalPages = 1;
+                currentPage = 1;
+            } else {
+                totalPages = Math.ceil(totalItems / pageSize) || 1;
+                if (currentPage > totalPages) currentPage = totalPages;
+                if (currentPage < 1) currentPage = 1;
+
+                const startIdx = (currentPage - 1) * pageSize;
+                const endIdx = startIdx + pageSize;
+                paginated = items.slice(startIdx, endIdx);
+            }
+
+            renderTable(paginated, (currentPage - 1) * pageSize);
+            renderPaginationControls(totalItems, totalPages);
+        }
+
+        // Render products into the table (Removed font-mono so that prices are styled in beautiful Vazir)
+        function renderTable(items, startRowIndex) {
+            const tbody = document.getElementById('inventory-tbody');
+            const emptyState = document.getElementById('empty-state-row');
+
+            const oldRows = tbody.querySelectorAll('.product-row');
+            oldRows.forEach(row => row.remove());
+
+            document.getElementById('filtered-count-badge').textContent = `${L('تعداد کالا', 'Total products')}: ${formatNumber(inventory.length)}`;
+
+            if (items.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            items.forEach((item, index) => {
+                const tr = document.createElement('tr');
+                tr.className = 'product-row hover:bg-slate-50/80 transition-all even:bg-slate-50/20';
+
+                const purchaseVal = (item.quantity || 0) * (item.purchasePrice || 0);
+                const sellingVal = (item.quantity || 0) * (item.sellingPrice || 0);
+
+                let qtyBadgeClass = 'bg-slate-100 text-slate-800 font-bold';
+                const qty = item.quantity || 0;
+                if (qty === 0) {
+                    qtyBadgeClass = 'bg-rose-100 text-rose-700 font-black ring-1 ring-rose-200';
+                } else if (qty < 5) {
+                    qtyBadgeClass = 'bg-amber-100 text-amber-700 font-bold ring-1 ring-amber-200';
+                }
+
+                tr.innerHTML = `
+                    <td class="py-3 px-4 text-center text-xs text-slate-400 font-bold border-e border-slate-100 no-wrap">${formatNumber(startRowIndex + index + 1)}</td>
+                    <td class="py-3 px-4 text-xs font-bold text-indigo-900 border-e border-slate-100 no-wrap">${escapeHtml(item.code || '—')}</td>
+                    <td class="py-3 px-4 font-bold text-slate-800 border-e border-slate-100">${escapeHtml(item.name)}</td>
+                    <td class="py-3 px-4 border-e border-slate-100"><span class="bg-indigo-50 text-indigo-700 text-[11px] font-bold px-2 py-1 rounded-lg border border-indigo-100">${escapeHtml(displayCategory(item.category))}</span></td>
+                    <td class="py-3 px-4 text-end font-medium text-slate-600 border-e border-slate-100 no-wrap">${formatNumber(item.purchasePrice)}</td>
+                    <td class="py-3 px-4 text-end font-medium text-slate-600 border-e border-slate-100 no-wrap">${formatNumber(item.sellingPrice)}</td>
+                    <td class="py-3 px-4 text-center border-e border-slate-100 no-wrap">
+                        <span class="inline-block px-2.5 py-0.5 rounded-full text-xs ${qtyBadgeClass}">
+                            ${formatNumber(qty)}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-end font-bold text-emerald-700 bg-emerald-50/10 border-e border-slate-100 no-wrap">${formatNumber(purchaseVal)}</td>
+                    <td class="py-3 px-4 text-end font-bold text-blue-700 bg-blue-50/10 border-e border-slate-100 no-wrap">${formatNumber(sellingVal)}</td>
+                    <td class="py-3 px-4 text-xs text-slate-500 border-e border-slate-100 barcode-col">${escapeHtml(item.barcode || '—')}</td>
+                    <td class="py-3 px-4">
+                        <div class="flex items-center justify-center gap-1.5">
+                            <button onclick="editProduct('${item.id}')" class="tooltip text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 p-1.5 rounded-lg transition-all">
+                                <i class="fa-solid fa-pen-to-square text-sm"></i>
+                                <span class="tooltiptext">${L('ویرایش مشخصات این کالا', 'Edit this product')}</span>
+                            </button>
+                            <button onclick="copyProduct('${item.id}')" class="tooltip text-teal-600 hover:text-teal-800 hover:bg-teal-50 p-1.5 rounded-lg transition-all">
+                                <i class="fa-solid fa-copy text-sm"></i>
+                                <span class="tooltiptext">${L('کپی کردن این کالا', 'Duplicate this product')}</span>
+                            </button>
+                            <button onclick="deleteProduct('${item.id}')" class="tooltip text-rose-600 hover:text-rose-800 hover:bg-rose-50 p-1.5 rounded-lg transition-all">
+                                <i class="fa-solid fa-trash-can text-sm"></i>
+                                <span class="tooltiptext">${L('حذف کالا از لیست انبارگردانی', 'Remove this product from the list')}</span>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            makeTableResizable(document.getElementById('inventory-table'));
+        }
+
+        // Render pagination controls (Prev, Next, Page numbers, showing stats)
+        function renderPaginationControls(totalItems, totalPages) {
+            const statsContainer = document.getElementById('pagination-stats');
+            const buttonsContainer = document.getElementById('pagination-buttons-container');
+
+            if (totalItems === 0) {
+                statsContainer.textContent = L('نمایش کالاها از ۰ تا ۰ از کل ۰ کالا', 'Showing items 0 to 0 of 0');
+                buttonsContainer.innerHTML = '';
+                return;
+            }
+
+            const startIdx = pageSize === -1 ? 0 : (currentPage - 1) * pageSize;
+            const endIdx = pageSize === -1 ? totalItems : Math.min(startIdx + pageSize, totalItems);
+
+            statsContainer.textContent = L(
+                `نمایش کالاها از ${formatNumber(startIdx + 1)} تا ${formatNumber(endIdx)} از کل ${formatNumber(totalItems)} کالا`,
+                `Showing items ${formatNumber(startIdx + 1)} to ${formatNumber(endIdx)} of ${formatNumber(totalItems)}`
+            );
+
+            if (pageSize === -1 || totalPages <= 1) {
+                buttonsContainer.innerHTML = '';
+                return;
+            }
+
+            const prevIcon = currentLang === 'fa' ? 'fa-angle-right' : 'fa-angle-left';
+            const nextIcon = currentLang === 'fa' ? 'fa-angle-left' : 'fa-angle-right';
+            let buttonsHTML = '';
+
+            const prevDisabled = currentPage === 1 ? 'disabled opacity-40 cursor-not-allowed' : '';
+            buttonsHTML += `<button onclick="changePage(${currentPage - 1})" ${prevDisabled} class="bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-lg px-2.5 py-1 text-xs font-bold transition-all"><i class="fa-solid ${prevIcon}"></i> ${L('قبلی', 'Prev')}</button>`;
+
+            const maxPageRange = 3;
+            let startPage = Math.max(1, currentPage - 1);
+            let endPage = Math.min(totalPages, startPage + maxPageRange - 1);
+
+            if (endPage - startPage < maxPageRange - 1) {
+                startPage = Math.max(1, endPage - maxPageRange + 1);
+            }
+
+            if (startPage > 1) {
+                buttonsHTML += `<button onclick="changePage(1)" class="bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-lg px-2.5 py-1 text-xs transition-all">${formatNumber(1)}</button>`;
+                if (startPage > 2) {
+                    buttonsHTML += `<span class="px-1 text-slate-400">...</span>`;
+                }
+            }
+
+            for (let p = startPage; p <= endPage; p++) {
+                const activeClass = currentPage === p ? 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-600' : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700';
+                buttonsHTML += `<button onclick="changePage(${p})" class="${activeClass} border rounded-lg px-2.5 py-1 text-xs font-bold transition-all">${formatNumber(p)}</button>`;
+            }
+
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    buttonsHTML += `<span class="px-1 text-slate-400">...</span>`;
+                }
+                buttonsHTML += `<button onclick="changePage(${totalPages})" class="bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-lg px-2.5 py-1 text-xs transition-all">${formatNumber(totalPages)}</button>`;
+            }
+
+            const nextDisabled = currentPage === totalPages ? 'disabled opacity-40 cursor-not-allowed' : '';
+            buttonsHTML += `<button onclick="changePage(${currentPage + 1})" ${nextDisabled} class="bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-lg px-2.5 py-1 text-xs font-bold transition-all">${L('بعدی', 'Next')} <i class="fa-solid ${nextIcon}"></i></button>`;
+
+            buttonsContainer.innerHTML = buttonsHTML;
+        }
+
+        // Global UI Refresh helper
+        function refreshUI() {
+            updateDashboard();
+            populateCategoryFilters();
+            applyFilters();
+        }
+
+        // HTML escaping
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // Add Modal opener
+        function openAddModal() {
+            document.getElementById('product-form').reset();
+            document.getElementById('product-id').value = '';
+
+            document.getElementById('live-p-purchase').textContent = '';
+            document.getElementById('live-p-selling').textContent = '';
+            document.getElementById('live-p-quantity').textContent = '';
+
+            document.getElementById('modal-title').textContent = L('ثبت مشخصات کالای جدید', 'Add New Product');
+            document.getElementById('modal-icon').innerHTML = '<i class="fa-solid fa-plus-circle text-lg"></i>';
+
+            calculateModalLiveValues();
+
+            const modal = document.getElementById('product-modal');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('modal-container').classList.remove('scale-95');
+                document.getElementById('p-code').focus();
+            }, 50);
+        }
+
+        // Edit Modal opener
+        function editProduct(id) {
+            const item = inventory.find(x => x.id === id);
+            if (!item) return;
+
+            openAddModal();
+
+            document.getElementById('modal-title').textContent = L('ویرایش کالا - ', 'Edit Product - ') + item.name;
+            document.getElementById('modal-icon').innerHTML = '<i class="fa-solid fa-pen-to-square text-lg"></i>';
+
+            document.getElementById('product-id').value = item.id;
+            fillProductForm(item, item.code || '');
+        }
+
+        // Close Modal handler
+        function closeModal() {
+            const modal = document.getElementById('product-modal');
+            document.getElementById('modal-container').classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 100);
+        }
+
+        // Live calculation formulas inside popup modal
+        function calculateModalLiveValues() {
+            const buyVal = parseFloat(document.getElementById('p-purchase-price').value) || 0;
+            const sellVal = parseFloat(document.getElementById('p-selling-price').value) || 0;
+            const qtyVal = parseFloat(document.getElementById('p-quantity').value) || 0;
+            const unit = L('تومان', 'Toman');
+
+            document.getElementById('calc-product-purchase-total').textContent = formatNumber(buyVal * qtyVal) + ' ' + unit;
+            document.getElementById('calc-product-selling-total').textContent = formatNumber(sellVal * qtyVal) + ' ' + unit;
+        }
+
+        // Save (Add or Update) product details
+        function saveProduct(event) {
+            event.preventDefault();
+
+            const id = document.getElementById('product-id').value;
+            const code = document.getElementById('p-code').value.trim();
+            const name = document.getElementById('p-name').value.trim();
+            const category = document.getElementById('p-category').value.trim() || DEFAULT_CATEGORY;
+            const purchasePrice = parseFloat(document.getElementById('p-purchase-price').value) || 0;
+            const sellingPrice = parseFloat(document.getElementById('p-selling-price').value) || 0;
+            const quantity = parseInt(document.getElementById('p-quantity').value) || 0;
+            const barcode = document.getElementById('p-barcode').value.trim();
+
+            const duplicate = code
+                ? inventory.find(item => (item.code || '').toLowerCase() === code.toLowerCase() && item.id !== id)
+                : null;
+            if (duplicate) {
+                Swal.fire({
+                    icon: 'error',
+                    title: L('خطای کد تکراری', 'Duplicate code'),
+                    text: L(
+                        `کد کالای "${code}" قبلاً به نام "${duplicate.name}" ثبت شده است. لطفا یک کد منحصربه‌فرد ثبت کنید.`,
+                        `The code "${code}" is already used by "${duplicate.name}". Please enter a unique code.`
+                    ),
+                    confirmButtonText: L('متوجه شدم', 'OK')
+                });
+                return;
+            }
+
+            if (id) {
+                const index = inventory.findIndex(x => x.id === id);
+                if (index !== -1) {
+                    inventory[index] = { id, code, name, category, purchasePrice, sellingPrice, quantity, barcode };
+                }
+            } else {
+                const newId = Date.now().toString();
+                inventory.push({ id: newId, code, name, category, purchasePrice, sellingPrice, quantity, barcode });
+            }
+
+            saveToStorage();
+            closeModal();
+            refreshUI();
+
+            Swal.fire({
+                icon: 'success',
+                title: id ? L('کالا با موفقیت ویرایش شد', 'Product updated') : L('کالای جدید اضافه شد', 'New product added'),
+                text: L(
+                    `عملیات ثبت اطلاعات برای کالا "${name}" با موفقیت تکمیل گردید.`,
+                    `"${name}" was saved successfully.`
+                ),
+                timer: 1500,
+                showConfirmButton: false,
+                position: 'top-end',
+                toast: true
+            });
+        }
+
+        // Delete confirmation with nice dialog
+        function deleteProduct(id) {
+            const item = inventory.find(x => x.id === id);
+            if (!item) return;
+
+            Swal.fire({
+                title: L('آیا از حذف این کالا مطمئن هستید؟', 'Delete this product?'),
+                text: L(
+                    `کالا "${item.name}" با کد "${item.code || '—'}" به طور کامل حذف خواهد شد.`,
+                    `"${item.name}" (code: "${item.code || '—'}") will be permanently deleted.`
+                ),
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#e11d48',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: L('بله، حذف شود', 'Yes, delete'),
+                cancelButtonText: L('انصراف', 'Cancel')
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    inventory = inventory.filter(x => x.id !== id);
+                    saveToStorage();
+                    refreshUI();
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: L('حذف موفقیت‌آمیز', 'Deleted'),
+                        text: L('کالای مورد نظر از لیست انبارگردانی حذف گردید.', 'The product was removed from the list.'),
+                        timer: 1500,
+                        showConfirmButton: false,
+                        position: 'top-end',
+                        toast: true
+                    });
+                }
+            });
+        }
+
+        function fillProductForm(item, code) {
+            document.getElementById('p-code').value = code;
+            document.getElementById('p-name').value = item.name || '';
+            document.getElementById('p-category').value = item.category || '';
+            document.getElementById('p-purchase-price').value = item.purchasePrice || 0;
+            document.getElementById('p-selling-price').value = item.sellingPrice || 0;
+            document.getElementById('p-quantity').value = item.quantity || 0;
+            document.getElementById('p-barcode').value = item.barcode || '';
+
+            formatLivePrice(document.getElementById('p-purchase-price'), 'live-p-purchase');
+            formatLivePrice(document.getElementById('p-selling-price'), 'live-p-selling');
+            calculateModalLiveValues();
+        }
+
+        function makeCopyCode(code) {
+            if (!code) return '';
+            const exists = (c) => inventory.some(x => (x.code || '').toLowerCase() === c.toLowerCase());
+            let candidate = `${code}-copy`;
+            let n = 2;
+            while (exists(candidate)) {
+                candidate = `${code}-copy${n++}`;
+            }
+            return candidate;
+        }
+
+        function copyProduct(id) {
+            const item = inventory.find(x => x.id === id);
+            if (!item) return;
+
+            openAddModal();
+
+            document.getElementById('modal-title').textContent = L('کپی کالا - ', 'Copy Product - ') + item.name;
+            document.getElementById('modal-icon').innerHTML = '<i class="fa-solid fa-copy text-lg"></i>';
+
+            fillProductForm(item, makeCopyCode(item.code));
+        }
+
+        function resetAllData() {
+            if (inventory.length === 0) {
+                Swal.fire(L('لیست خالی است', 'List is empty'), L('داده‌ای برای پاک کردن وجود ندارد.', 'There is no data to clear.'), 'info');
+                return;
+            }
+
+            Swal.fire({
+                title: L('آیا از ریست کردن مطمئن هستید؟', 'Reset all data?'),
+                text: L(
+                    `اطلاعات ${formatNumber(inventory.length)} کالای ثبت‌شده به طور کامل پاک خواهد شد و این عمل غیرقابل بازگشت است.`,
+                    `All ${formatNumber(inventory.length)} products in the table will be permanently erased. This cannot be undone.`
+                ),
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#e11d48',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: L('بله، ریست شود', 'Yes, reset'),
+                cancelButtonText: L('انصراف', 'Cancel')
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    inventory = [];
+                    saveToStorage();
+                    document.getElementById('filter-search').value = '';
+                    document.getElementById('filter-barcode').value = '';
+                    document.getElementById('filter-category').value = '';
+                    currentPage = 1;
+                    refreshUI();
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: L('ریست انجام شد', 'Reset complete'),
+                        text: L('تمام اطلاعات جدول پاک شد.', 'All table data has been cleared.'),
+                        timer: 1500,
+                        showConfirmButton: false,
+                        position: 'top-end',
+                        toast: true
+                    });
+                }
+            });
+        }
+
+        function buildExportRows() {
+            const header = currentLang === 'en'
+                ? ["Row", "Code", "Name", "Category", "Purchase Price (Toman)", "Selling Price (Toman)", "Qty", "Total Purchase Value (Toman)", "Total Selling Value (Toman)", "Barcode"]
+                : ["ردیف", "کد کالا", "نام محصول", "دسته بندی", "قیمت خرید (تومان)", "قیمت فروش (تومان)", "تعداد", "ارزش کل خرید (تومان)", "ارزش کل فروش (تومان)", "بارکد"];
+
+            const rows = [header];
+            inventory.forEach((item, index) => {
+                rows.push([
+                    index + 1,
+                    item.code,
+                    item.name,
+                    item.category,
+                    item.purchasePrice,
+                    item.sellingPrice,
+                    item.quantity,
+                    item.purchasePrice * item.quantity,
+                    item.sellingPrice * item.quantity,
+                    item.barcode
+                ]);
+            });
+            return rows;
+        }
+
+        // Import Options / Export Modals
+        function openExportModal() {
+            document.getElementById('export-options-modal').classList.remove('hidden');
+        }
+
+        function closeExportModal() {
+            document.getElementById('export-options-modal').classList.add('hidden');
+        }
+
+        // Native XLSX Excel Export (SheetJS)
+        function exportToExcel() {
+            closeExportModal();
+            if (inventory.length === 0) {
+                Swal.fire(L('لیست خالی است', 'List is empty'), L('کالایی در انبار برای صدور به اکسل یافت نشد.', 'There are no products to export to Excel.'), 'warning');
+                return;
+            }
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(buildExportRows());
+            ws['!views'] = [{ RTL: currentLang === 'fa' }];
+
+            XLSX.utils.book_append_sheet(wb, ws, L('لیست انبارگردانی', 'Inventory'));
+
+            const timestamp = new Date().toISOString().slice(0, 10);
+            XLSX.writeFile(wb, `anbargardani-${timestamp}.xlsx`);
+        }
+
+        // Export data to CSV (SheetJS powered)
+        function exportToCSV() {
+            closeExportModal();
+            if (inventory.length === 0) {
+                Swal.fire(L('لیست خالی است', 'List is empty'), L('کالایی برای صدور یافت نشد.', 'There are no products to export.'), 'warning');
+                return;
+            }
+
+            const ws = XLSX.utils.aoa_to_sheet(buildExportRows());
+            const csv = XLSX.utils.sheet_to_csv(ws);
+
+            // BOM keeps Persian text intact in Excel
+            const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.href = url;
+            const timestamp = new Date().toISOString().slice(0, 10);
+            downloadAnchor.setAttribute("download", `anbargardani-report-${timestamp}.csv`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        // Backup Export to JSON
+        function exportToJSON() {
+            closeExportModal();
+            if (inventory.length === 0) {
+                Swal.fire(L('لیست خالی است', 'List is empty'), L('کالایی برای ایجاد فایل پشتیبان یافت نشد.', 'There are no products to back up.'), 'warning');
+                return;
+            }
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(inventory, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            const timestamp = new Date().toISOString().slice(0, 10);
+            downloadAnchor.setAttribute("download", `anbargardani-backup-${timestamp}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        // Trigger native file selector
+        function triggerImport() {
+            document.getElementById('import-file').click();
+        }
+
+        // Multi-format import handler (Supports XLSX, XLS, CSV and JSON files)
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const extension = file.name.split('.').pop().toLowerCase();
+            const reader = new FileReader();
+
+            if (extension === 'json') {
+                reader.onload = function(e) {
+                    try {
+                        const parsed = JSON.parse(e.target.result);
+                        processImportedList(parsed, L('پشتیبان JSON', 'JSON backup'));
+                    } catch (err) {
+                        Swal.fire(
+                            L('خطا در خواندن فایل', 'File read error'),
+                            L('ساختار فایل پشتیبان JSON معتبر نمی‌باشد: ', 'The JSON backup structure is invalid: ') + err.message,
+                            'error'
+                        );
+                    }
+                };
+                reader.readAsText(file);
+            } else if (['xlsx', 'xls', 'csv'].includes(extension)) {
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const excelData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                        if (excelData.length <= 1) {
+                            throw new Error(L('فایل خالی است یا فاقد سطر سرفصل‌ها می‌باشد.', 'The file is empty or has no header row.'));
+                        }
+
+                        const headers = excelData[0].map(h => String(h || '').trim().toLowerCase());
+                        const findColumnIndex = (keywords) => headers.findIndex(h => keywords.some(kw => h.includes(kw)));
+
+                        const codeIdx = findColumnIndex(["کد کالا", "کد", "code", "id", "شناسه"]);
+                        const nameIdx = findColumnIndex(["نام محصول", "نام کالا", "نام", "product", "name", "عنوان"]);
+                        const catIdx = findColumnIndex(["دسته بندی", "دسته", "گروه", "category", "group"]);
+                        const buyIdx = findColumnIndex(["قیمت خرید", "خرید", "buy", "purchase"]);
+                        const sellIdx = findColumnIndex(["قیمت فروش", "فروش", "sell", "selling"]);
+                        const qtyIdx = findColumnIndex(["تعداد کالا", "تعداد", "موجودی", "qty", "quantity", "count"]);
+                        const barIdx = findColumnIndex(["بارکد محصول", "بارکد", "barcode"]);
+
+                        if (nameIdx === -1) {
+                            throw new Error(L(
+                                "ستون الزامی 'نام محصول' در فایل یافت نشد. سطر اول باید شامل این عنوان باشد.",
+                                "The required 'Name' column was not found. The first row must contain it."
+                            ));
+                        }
+
+                        const parsedList = [];
+                        for (let i = 1; i < excelData.length; i++) {
+                            const row = excelData[i];
+                            if (!row || row.length === 0) continue;
+
+                            const code = codeIdx !== -1 ? String(row[codeIdx] || '').trim() : '';
+                            const name = String(row[nameIdx] || '').trim();
+                            if (!name) continue;
+
+                            const category = (catIdx !== -1 ? String(row[catIdx] || '').trim() : '') || DEFAULT_CATEGORY;
+                            const purchasePrice = buyIdx !== -1 ? parseFloat(String(row[buyIdx]).replace(/[^0-9.]/g, '')) || 0 : 0;
+                            const sellingPrice = sellIdx !== -1 ? parseFloat(String(row[sellIdx]).replace(/[^0-9.]/g, '')) || 0 : 0;
+                            const quantity = qtyIdx !== -1 ? parseInt(String(row[qtyIdx]).replace(/[^0-9]/g, '')) || 0 : 0;
+                            const barcode = barIdx !== -1 ? String(row[barIdx] || '').trim() : "";
+
+                            parsedList.push({ code, name, category, purchasePrice, sellingPrice, quantity, barcode });
+                        }
+
+                        processImportedList(parsedList, L('اکسل/CSV', 'Excel/CSV'));
+
+                    } catch (err) {
+                        Swal.fire(
+                            L('خطا در خواندن اکسل', 'Excel read error'),
+                            L('مشکلی در تحلیل داده‌های اکسل به وجود آمد: ', 'Could not parse the spreadsheet data: ') + err.message,
+                            'error'
+                        );
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            } else {
+                Swal.fire(
+                    L('فرمت نامعتبر', 'Invalid format'),
+                    L('لطفاً یک فایل معتبر اکسل (.xlsx, .xls)، لیست (.csv) و یا پشتیبان (.json) بارگذاری کنید.', 'Please upload a valid Excel (.xlsx, .xls), list (.csv) or backup (.json) file.'),
+                    'error'
+                );
+            }
+
+            event.target.value = '';
+        }
+
+        // Dry run process and confirm dialogs
+        function processImportedList(parsedList, formatName) {
+            if (!Array.isArray(parsedList) || parsedList.length === 0) {
+                Swal.fire(L('فایل خالی است', 'File is empty'), L('هیچ کالای معتبری در فایل بارگذاری شده یافت نشد.', 'No valid products were found in the uploaded file.'), 'warning');
+                return;
+            }
+
+            Swal.fire({
+                title: L('تایید ورود داده‌ها', 'Confirm import'),
+                text: L(
+                    `تعداد ${formatNumber(parsedList.length)} کالا از فایل ${formatName} با موفقیت خوانده شد. چطور مایلید این داده‌ها اضافه شوند؟`,
+                    `${formatNumber(parsedList.length)} products were read from the ${formatName} file. How would you like to add them?`
+                ),
+                icon: 'question',
+                showDenyButton: true,
+                showCancelButton: true,
+                confirmButtonText: L('جایگزینی کل داده‌ها (پاک شدن لیست فعلی)', 'Replace all data (clears current list)'),
+                denyButtonText: L('ادغام با لیست فعلی (کالاهای جدید اضافه و قبلی‌ها آپدیت شوند)', 'Merge with current list (add new, update existing)'),
+                cancelButtonText: L('انصراف', 'Cancel'),
+                confirmButtonColor: '#e11d48',
+                denyButtonColor: '#4f46e5',
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    inventory = parsedList.map((x, i) => ({
+                        ...x,
+                        code: x.code || '',
+                        id: x.id || (Date.now() + i).toString()
+                    }));
+                    saveToStorage();
+                    refreshUI();
+                    Swal.fire(
+                        L('ورود موفق کالاها', 'Import successful'),
+                        L('تمام اقلام قدیمی با موفقیت حذف و لیست جدید جایگزین شد.', 'The old list was replaced with the imported products.'),
+                        'success'
+                    );
+                } else if (result.isDenied) {
+                    let mergedCount = 0;
+                    parsedList.forEach((importedItem, i) => {
+                        const importedCode = (importedItem.code || '').toLowerCase();
+                        const existIndex = importedCode
+                            ? inventory.findIndex(x => (x.code || '').toLowerCase() === importedCode)
+                            : -1;
+                        if (existIndex !== -1) {
+                            inventory[existIndex] = {
+                                ...inventory[existIndex],
+                                name: importedItem.name,
+                                category: importedItem.category || inventory[existIndex].category,
+                                purchasePrice: importedItem.purchasePrice,
+                                sellingPrice: importedItem.sellingPrice,
+                                quantity: importedItem.quantity,
+                                barcode: importedItem.barcode || inventory[existIndex].barcode
+                            };
+                        } else {
+                            inventory.push({
+                                ...importedItem,
+                                code: importedItem.code || '',
+                                id: importedItem.id || (Date.now() + i).toString()
+                            });
+                            mergedCount++;
+                        }
+                    });
+
+                    saveToStorage();
+                    refreshUI();
+                    Swal.fire(
+                        L('ادغام موفق کالاها', 'Merge successful'),
+                        L(
+                            `بروزرسانی اقلام هم‌کد انجام شد و تعداد ${formatNumber(mergedCount)} کالای کاملاً جدید نیز به لیست اضافه گردید.`,
+                            `Existing items were updated and ${formatNumber(mergedCount)} new products were added.`
+                        ),
+                        'success'
+                    );
+                }
+            });
+        }
+
+        // ==========================================
+        // BULK PRICE ADJUSTMENT IMPLEMENTATION (NEW)
+        // ==========================================
+        
+        function openBulkPriceModal() {
+            if (inventory.length === 0) {
+                Swal.fire(
+                    L('لیست انبار خالی است', 'Inventory is empty'),
+                    L('ابتدا باید کالایی در سیستم انبارگردانی وارد کنید تا بتوانید قیمت‌ها را تغییر دهید.', 'Add at least one product before changing prices.'),
+                    'warning'
+                );
+                return;
+            }
+
+            document.getElementById('bulk-value').value = '';
+            toggleBulkTypePlaceholder();
+
+            const modal = document.getElementById('bulk-price-modal');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('bulk-modal-container').classList.remove('scale-95');
+                document.getElementById('bulk-value').focus();
+            }, 50);
+        }
+
+        function closeBulkPriceModal() {
+            const modal = document.getElementById('bulk-price-modal');
+            document.getElementById('bulk-modal-container').classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 100);
+        }
+
+        function toggleBulkTypePlaceholder() {
+            const bulkType = document.getElementById('bulk-type').value;
+            const inputVal = document.getElementById('bulk-value');
+            const indicator = document.getElementById('bulk-live-indicator');
+
+            if (bulkType === 'percentage') {
+                inputVal.placeholder = L('مثال: 15 (برای ۱۵ درصد)', 'e.g. 15 (for 15%)');
+                indicator.textContent = L('درصد تغییر قیمت را وارد کنید', 'Enter the percentage');
+            } else {
+                inputVal.placeholder = L('مثال: 50000 (برای ۵۰ هزار تومان)', 'e.g. 50000 (for 50,000 Toman)');
+                indicator.textContent = L('مبلغ ثابت تغییر قیمت به تومان را وارد کنید', 'Enter the fixed amount in Toman');
+            }
+            formatLiveBulkIndicator();
+        }
+
+        function formatLiveBulkIndicator() {
+            const bulkType = document.getElementById('bulk-type').value;
+            const action = document.getElementById('bulk-action').value;
+            const value = parseFloat(document.getElementById('bulk-value').value) || 0;
+            const indicator = document.getElementById('bulk-live-indicator');
+
+            const actionWord = action === 'increase' ? L('افزایش', 'Increase') : L('کاهش', 'Decrease');
+
+            if (bulkType === 'percentage') {
+                indicator.textContent = L(
+                    `درصد تغییر: ${actionWord} به میزان ${formatNumber(value)}٪`,
+                    `Percentage change: ${actionWord} by ${formatNumber(value)}%`
+                );
+            } else {
+                indicator.textContent = L(
+                    `مبلغ ثابت تغییر: ${actionWord} به میزان ${formatNumber(value)} تومان`,
+                    `Fixed change: ${actionWord} by ${formatNumber(value)} Toman`
+                );
+            }
+        }
+
+        function executeBulkPriceAdjustment() {
+            const scope = document.querySelector('input[name="bulk-scope"]:checked').value;
+            const target = document.querySelector('input[name="bulk-target-price"]:checked').value;
+            const action = document.getElementById('bulk-action').value;
+            const bulkType = document.getElementById('bulk-type').value;
+            const value = parseFloat(document.getElementById('bulk-value').value);
+
+            if (isNaN(value) || value <= 0) {
+                Swal.fire(
+                    L('مقدار نامعتبر', 'Invalid value'),
+                    L('لطفاً مقدار عددی مثبت و بزرگ‌تر از صفر برای تغییر قیمت وارد کنید.', 'Please enter a positive number greater than zero.'),
+                    'error'
+                );
+                return;
+            }
+
+            const targets = scope === 'all' ? [...inventory] : getFilteredInventory();
+
+            if (targets.length === 0) {
+                Swal.fire(
+                    L('لیست خالی است', 'List is empty'),
+                    L('کالایی در محدوده انتخابی جهت اعمال تغییرات وجود ندارد.', 'There are no products in the selected scope.'),
+                    'warning'
+                );
+                return;
+            }
+
+            const actionWord = action === 'increase' ? L('افزایش', 'Increase') : L('کاهش', 'Decrease');
+            const methodWord = bulkType === 'percentage' ? L('درصد', 'percent') : L('تومان', 'Toman');
+            let targetWord = L('قیمت خرید', 'purchase price');
+            if (target === 'selling') targetWord = L('قیمت فروش', 'selling price');
+            if (target === 'both') targetWord = L('قیمت خرید و قیمت فروش', 'purchase and selling prices');
+
+            Swal.fire({
+                title: L('آیا مایل به اعمال نهایی هستید؟', 'Apply these changes?'),
+                text: L(
+                    `تعداد ${formatNumber(targets.length)} کالا انتخاب شده‌اند. عملیات "${actionWord} قیمت به میزان ${formatNumber(value)} ${methodWord}" روی "${targetWord}" این کالاها اعمال خواهد شد.`,
+                    `${formatNumber(targets.length)} products are selected. "${actionWord} by ${formatNumber(value)} ${methodWord}" will be applied to their ${targetWord}.`
+                ),
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d97706',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: L('بله، تغییرات اعمال شود', 'Yes, apply changes'),
+                cancelButtonText: L('انصراف', 'Cancel')
+            }).then((result) => {
+                if (result.isConfirmed) {
+
+                    targets.forEach(targetItem => {
+                        const itemIdx = inventory.findIndex(x => x.id === targetItem.id);
+                        if (itemIdx === -1) return;
+
+                        const item = inventory[itemIdx];
+
+                        const calculateNewPrice = (oldPrice) => {
+                            let newPrice = oldPrice;
+                            if (bulkType === 'percentage') {
+                                const delta = oldPrice * (value / 100);
+                                newPrice = action === 'increase' ? oldPrice + delta : Math.max(0, oldPrice - delta);
+                            } else {
+                                newPrice = action === 'increase' ? oldPrice + value : Math.max(0, oldPrice - value);
+                            }
+                            return Math.round(newPrice);
+                        };
+
+                        if (target === 'purchase' || target === 'both') {
+                            item.purchasePrice = calculateNewPrice(item.purchasePrice || 0);
+                        }
+                        if (target === 'selling' || target === 'both') {
+                            item.sellingPrice = calculateNewPrice(item.sellingPrice || 0);
+                        }
+                    });
+
+                    saveToStorage();
+                    closeBulkPriceModal();
+                    refreshUI();
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: L('تغییر قیمت دسته جمعی موفقیت آمیز بود', 'Bulk price change applied'),
+                        text: L(
+                            `مبالغ تعداد ${formatNumber(targets.length)} کالا در انبار با موفقیت به‌روزرسانی گردید.`,
+                            `Prices of ${formatNumber(targets.length)} products were updated successfully.`
+                        ),
+                        confirmButtonText: L('تایید', 'OK')
+                    });
+                }
+            });
+        }
+
+        // Precise Table Columns Horizontally Draggable Resizer (RTL Compliant)
+        function makeTableResizable(table) {
+            const cols = table.querySelectorAll("th");
+            cols.forEach(col => {
+                const existing = col.querySelector('.resizer');
+                if (existing) existing.remove();
+
+                if (col.hasAttribute('data-no-resize')) return;
+
+                const resizer = document.createElement("div");
+                resizer.className = "resizer absolute end-0 top-0 bottom-0 w-[5px] bg-slate-200/40 hover:bg-indigo-500 cursor-col-resize select-none z-10 hover:w-[6px]";
+                resizer.style.height = "100%";
+                col.classList.add("relative");
+                col.appendChild(resizer);
+
+                let startX, startWidth;
+
+                resizer.addEventListener("mousedown", (e) => {
+                    e.preventDefault();
+                    startX = e.clientX;
+                    startWidth = col.offsetWidth;
+
+                    const onMouseMove = (moveEvent) => {
+                        // RTL grows leftwards, LTR grows rightwards
+                        const delta = currentLang === 'fa' ? startX - moveEvent.clientX : moveEvent.clientX - startX;
+                        const newWidth = startWidth + delta;
+                        if (newWidth > 60) {
+                            col.style.width = newWidth + "px";
+                            col.style.minWidth = newWidth + "px";
+                        }
+                    };
+
+                    const onMouseUp = () => {
+                        document.removeEventListener("mousemove", onMouseMove);
+                        document.removeEventListener("mouseup", onMouseUp);
+                        resizer.classList.remove("bg-indigo-600");
+                    };
+
+                    resizer.classList.add("bg-indigo-600");
+                    document.addEventListener("mousemove", onMouseMove);
+                    document.addEventListener("mouseup", onMouseUp);
+                });
+            });
+        }
+    </script>
+</body>
+</html>
